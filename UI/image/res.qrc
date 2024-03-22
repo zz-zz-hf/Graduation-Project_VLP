@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="image">
+    <file>dir.png</file>
+    <file>model.png</file>
+    <file>way.png</file>
+  </qresource>
+</RCC>
