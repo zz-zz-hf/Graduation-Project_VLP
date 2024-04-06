@@ -95,7 +95,7 @@ def tran_oula(rvec_matrix, translation_vector):
 
     return pitch,roll,yaw
 
-def genatate_camerapoints(imgsize,R,t):
+def genatate_pixelpoints(imgsize, R, t):
     """
     生成仿真图像坐标
     :param R: 旋转矩阵(3,3)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
             t_gen=np.array([[-0.2-j*0.5,-0.2,-0]], dtype=np.double)
             pos_standard=np.dot(-np.linalg.inv(R_gen), t_gen.reshape(3, 1))
 
-            pixel_point_standard,world_point_standard=genatate_camerapoints((pix_width, pix_height), R_gen, t_gen)
+            pixel_point_standard,world_point_standard=genatate_pixelpoints((pix_width, pix_height), R_gen, t_gen)
 
             if pixel_point_standard.shape[0]<3:
                 print("控制点数量不足")
