@@ -55,8 +55,14 @@ def cal_RT(res,pnp_flags=cv.SOLVEPNP_SQPNP):
         word_points=item[filename][0]
         img_points=item[filename][1]
         start_time = time.time()
-        (success, rotation_vector, translation_vector) = cv.solvePnP(word_points, img_points, camera_matrix,
-                                                                 dist_coeffs, flags=pnp_flags)
+        if pnp_flags==8 and len(img_points)>=3:
+            (success, rotation_vector, translation_vector) = cv.solvePnP(word_points, img_points, camera_matrix,
+                                                                         dist_coeffs, flags=pnp_flags)
+        elif pnp_flags==0 and len(img_points)>3:
+            (success, rotation_vector, translation_vector) = cv.solvePnP(word_points, img_points, camera_matrix,
+                                                                        dist_coeffs, flags=pnp_flags)
+        else:
+            continue
         end_time = time.time()
         times.append(end_time - start_time)
         R = cv.Rodrigues(rotation_vector)[0] #将旋转向量转化为旋转矩阵

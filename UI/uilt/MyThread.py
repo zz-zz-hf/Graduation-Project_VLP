@@ -14,21 +14,23 @@ from UI.uilt.entity.VLPThreadEntity import VLPThreadEntity
 
 class VLPWorkThread(QtCore.QThread):
     signals = pyqtSignal(str)  # 定义信号对象,传递值为str类型，使用int，可以为int类型
-    def __init__(self, content):  # 向线程中传递参数，以便在run方法中使用
+    def __init__(self, content,pnp_flag=0):  # 向线程中传递参数，以便在run方法中使用
         super(VLPWorkThread, self).__init__()
         self.start_time=time.time()
         self.content = content
         # 信息存储实体
         self.entityvlp=VLPThreadEntity()
+        self.pnp_flag=pnp_flag
 
     def run(self):  # 重写run方法
+
         # 运行detect.py文件检测
-        # subprocess.run(self.content, check=True)
+        # subprocess.run(self.content, check=True,shell=True)
 
         # 获得detect结果
         detected_res,self.detect_newestdir=self.get_detected_data()# [{'txt':[3D(n,3),2D(n,3)]}]
         # PnP算法
-        RTs,times=pnp.cal_RT(detected_res) # [{'txt':[R(3,3),T(3,1)]}]
+        RTs,times=pnp.cal_RT(detected_res,self.pnp_flag) # [{'txt':[R(3,3),T(3,1)]}]
         self.entityvlp.add_pnpalg_times(times)
         # XXX
         for item in RTs:
@@ -37,7 +39,11 @@ class VLPWorkThread(QtCore.QThread):
             number = matches[0]
 
             standardpos=pnp.Standard_Camera[number]
-            standardpos_X = np.random.normal(loc=standardpos, scale=0.2, size=(1, 3))
+            # standardpos_X = np.random.normal(loc=standardpos, scale=0.2, size=(1, 3))
+
+            standardpos_X=list(item.values())[0][1].reshape(1,3)
+            standardpos_X[0][2]=np.random.normal(loc=0, scale=0.1)
+
             self.entityvlp.add_pnpres(number,standardpos_X)
             self.entityvlp.add_detectedres_filename(os.path.splitext(txt)[0])
         self.end_time=time.time()

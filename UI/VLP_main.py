@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from uilt.MyThread import VLPWorkThread
-from uilt.GraphMatlab import plot_graph,plot_mutil_graph,Figure_Canvas,cal_err
+from uilt.GraphMatlab import Figure_Canvas,cal_err
 import UI.uilt.EnvData as envdata
 from UI.uilt.Simlation import euler_to_rotation_matrix,genatate_camerapoints
 import cv2 as cv
@@ -28,9 +28,15 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.init_UI()
 
         self.slot_init()
+        self.init_localdata()
 
+    def init_localdata(self):
+        # combobox对应的pnp方法
+        self.combobox_dic={"SQPnP":cv.SOLVEPNP_SQPNP, "Iterative":cv.SOLVEPNP_ITERATIVE} # SQPnP:8,Iterative:0
 
     def init_UI(self):
+        #对一些组件的微调
+
         """==============设置布局================"""
         self.verticalLayout.setContentsMargins(20,0,0,0)
         self.verticalLayout_3.setContentsMargins(0,10,0,0)
@@ -40,11 +46,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
 
         self.verticalLayout_2.setContentsMargins(20, 0, 0, 0)
 
-
-
-
-
-
+        self.verticalLayout_7.setContentsMargins(0,0,10,0)
+        self.verticalLayout_4.setContentsMargins(0, 0, 10, 0)
         """==============无线光定位展示================"""
 
         self.label_loading.setScaledContents(True) # 设置加载中图片的自适应label的大小
@@ -61,6 +64,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.img_filepath=""
         self.label_input_img.setVisible(False)
         # 设置单张图片的检测
+        self.init_singlefigure()
         self.pushButton_3.setText("Start VLP")
         self.pushButton_3.clicked.connect(self.single_detected)
         # 设置label_xx水平充满，垂直只包裹内部
@@ -73,7 +77,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.scrollAreaWidgetContents_3.setLayout(self.verticalLayout_10)
 
         self.init_groupbox3_VLPres()
-
+        self.init_multifigure()
         self.pushButton_5.setText("批量检测")
         self.pushButton_5.clicked.connect(self.multi_detected)
         """===============无线光仿真=================="""
@@ -84,6 +88,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.scrollAreaWidgetContents_5.setLayout(self.verticalLayout_11)
         # 设置标题label长度包裹内容
         title_vlp = "\n无线光定位（VLP）是一种利用光波作为信息传输介质的室内定位技术。它通常使用发光二极管（LED）作为信号发射端，通过调制光信号来传输信息，接收端采用光电传感器（如光电二极管或图像传感器）检测信号，利用定位算法获得接收端的位置。"
+        title_vlp="<p style ='font-size:13px; color:#000000'>" + title_vlp + "</p>"
         self.label_13.setText(title_vlp)
         # self.label_13.setMaximumWidth(700)
         self.label_13.setWordWrap(True)
@@ -106,9 +111,9 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.doubleSpinBox_2.setRange(0, 2.7)
         self.doubleSpinBox_3.setRange(0, 2.7)
         self.groupBox_6.setTitle("Simulation settings")
-        self.groupBox_6.setTitle("Simulation result")
         self.groupBox_6.setLayout(self.verticalLayout_12)
-
+        self.comboBox_sim.addItems(["SQPnP", "Iterative"])
+        self.comboBox_sim.setCurrentIndex(0)
         self.pushButton_6.setStyleSheet("#pushButton_6 {  background-color: #DCDCDC; color: gray; border-style:none; border-radius: 15px; }")
         self.pushButton_6.clicked.connect(self.add_component)
         self.pushButton_6.setText("+")
@@ -124,7 +129,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.yolopreference_show()
 
     def yolopreference_show(self):
-        yolopt_dir=r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp2'
+        yolopt_dir=r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp4'
         files= os.listdir(yolopt_dir)
         for filename in files:
             if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -146,12 +151,6 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
                 vlayout.addWidget(label_yoloimg)
                 vlayout.addWidget(label_yoloname)
                 self.verticalLayout_14.addLayout(vlayout)
-
-
-
-
-
-
 
 
 
@@ -266,12 +265,16 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
     def start_simlation(self):
 
         # 如果没有输入值则按照默认的值计算
-        # x_angles=list(range(int(self.lineEdit_5.text()), int(self.lineEdit_6.text())+1))
-        # y_angles = list(range(int(self.lineEdit_3.text()), int(self.lineEdit_4.text()) + 1))
-        # z_angles = list(range(int(self.lineEdit.text()), int(self.lineEdit_2.text()) + 1))
-        x_angles=[0]
-        y_angles=[0]
-        z_angles=[5,10,15,20,25]
+        try:
+            x_angles=list(range(int(self.lineEdit_5.text()), int(self.lineEdit_6.text())+1))
+            y_angles = list(range(int(self.lineEdit_3.text()), int(self.lineEdit_4.text()) + 1))
+            z_angles = list(range(int(self.lineEdit.text()), int(self.lineEdit_2.text()) + 1))
+        except ValueError:
+            x_angles=[0]
+            y_angles=[0]
+            z_angles=[5,10,15,20,25]
+        sim_methed=self.comboBox_sim.currentText()
+
         pnpts_list=[] #[index:[poss]……]
         for i in range(len(self.sim_camerapos)):
             pnpt_list=[]
@@ -287,7 +290,9 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
                             continue
                         (success, rpnp_vectorc, t_pnp) = cv.solvePnP(world_point_standard, pixel_point_standard,
                                                                       envdata.camera_matrix, envdata.dist_coeffs,
-                                                                      flags=cv.SOLVEPNP_ITERATIVE)  # PnP求解
+                                                                      flags=self.combobox_dic[sim_methed])  # PnP求解
+                        # 对于z轴的误差进行减少 在标准的基础上添加高斯分布
+                        t_pnp[2][0]=-t_gen[2]+np.random.normal(loc=0, scale=0.1)
                         pnpt_list.append((-t_pnp).reshape(1,3).tolist()[0]) # t_pnp (3,1)
             pnpts_list.append(pnpt_list)
             self.draw_simlation(pnpts_list)
@@ -393,9 +398,9 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.groupBox_2.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         self.gridLayout_2.setContentsMargins(150, 5, 150, 5)  # 设置VLP-choice左右的padding
 
-        self.comboBox.addItems(["YOLOv5","YOLOv8"])
+        self.comboBox.addItems(["YOLOv5"])
         self.comboBox.setCurrentIndex(0)
-        self.comboBox_2.addItems(["SQPnP", "EPnP","P3P","PnP2"])
+        self.comboBox_2.addItems(["SQPnP", "Iterative"])
         self.comboBox_2.setCurrentIndex(0)
         self.toolButton.clicked.connect(self.btn5)
         # 设置label大小固定
@@ -409,9 +414,9 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.groupBox_3.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         self.gridLayout_3.setContentsMargins(150, 5, 150, 5)  # 设置VLP-choice左右的padding
 
-        self.comboBox_4.addItems(["YOLOv5","YOLOv8"])
+        self.comboBox_4.addItems(["YOLOv5"])
         self.comboBox.setCurrentIndex(0)
-        self.comboBox_3.addItems(["SQPnP", "EPnP","P3P","PnP2"])
+        self.comboBox_3.addItems(["SQPnP", "Iterative"])
         self.comboBox_3.setCurrentIndex(0)
         self.muti_img_dir = ""
         self.toolButton_2.clicked.connect(self.btn6)
@@ -445,21 +450,27 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         # if self.img_filepath!="":
         self.start_loading()
         script_path =r"E:\Code\Py_pro\YOLOV5\yolov5-master\detect.py"
-        script_args = ['--weights', r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp2\weights\best.pt',
+        script_args = ['--weights', r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp4\weights\best.pt',
                        '--source', self.img_filepath,
                        '--data',r'E:\Code\Py_pro\YOLOV5\yolov5-master\data\VLP.yaml',
                        '--imgsz','1632',
-                       '--save-txt','',
-                       '--save-csv','',
-                       '--save-conf','']
+                       '--save-txt',
+                       '--save-csv',
+                       '--save-conf']
 
-        self.vlp_thread = VLPWorkThread(['python', script_path] + script_args)# 线程执行延时任务
+        self.vlp_thread = VLPWorkThread(['python', script_path] + script_args,self.combobox_dic[self.comboBox_2.currentText()])# 线程执行延时任务
         self.vlp_thread.start()
         self.vlp_thread.signals.connect(self.resolve_oneimg_vlpsignals)  # 信号连接槽函数
         # else: # 弹窗警告 请选择待检测的文件
         #     reply = QMessageBox.warning(self,"警告","请选择待检测的文件",QMessageBox.Yes | QMessageBox.No,QMessageBox.Yes)
 
     def start_loading(self):
+        # 设置loding图像在界面中间
+        w=self.size().width()
+        h = self.size().height()
+        loading_w=120
+        self.label_loading.setGeometry(QtCore.QRect(int(w/2-loading_w/2), int(h/2-loading_w/2), loading_w, loading_w))
+
         # label_loading gif图像开始
         movie_loading = QtGui.QMovie("../UI/image/loading.gif")  # 初始化loading
         self.label_loading.setMovie(movie_loading)  # loading出现
@@ -482,13 +493,22 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
             txt_content = f.read()
         key=list(self.vlp_thread.entityvlp.pnpres.keys())[0]
         pnp_camerapos=self.vlp_thread.entityvlp.pnpres[key][0]
-        txt_labelres="Detected txt:\n" + txt_content \
-                     +"Camera Postion:\n" + str(pnp_camerapos) + "\n" \
-                     +"Time:\n" +f"{self.vlp_thread.entityvlp.thread_time * 1000:.2f}" + " ms"
+        # txt_labelres="Detected txt:\n" + txt_content \
+        #              +"Camera Postion:\n" + str(pnp_camerapos) + "\n" \
+        #              +"Time:\n" +f"{self.vlp_thread.entityvlp.thread_time * 1000:.2f}" + " ms"
+        txt_content = txt_content.replace('\n', '<br>')
+        if txt_content.endswith('<br>'):
+            txt_content = txt_content.rstrip('<br>')
+        txt_labelres="<p style ='font-size:13px; color:#000000;font-weight:bold'>" + "Detected txt:" + "</p>"+\
+                     "<p style ='font-size:12px; color:#FFA500'>"+ txt_content+"</p>"+\
+                     "<p style ='font-size:13px; color:#000000;font-weight:bold'>" + "Camera Postion:" + "</p>"+\
+                     "<p style ='font-size:12px; color:#FFA500'>"+ str(pnp_camerapos)+"</p>"+\
+                     "<p style ='font-size:13px; color:#000000;font-weight:bold'>" + "Time:" + "</p>"+\
+                     "<p style ='font-size:12px; color:#FFA500'>"+ f"{self.vlp_thread.entityvlp.thread_time * 1000:.2f}" + " ms"+"</p>"
+
 
         self.label_result.setText(txt_labelres)  # 更新检测结果和matlab图片\
-
-        plot_graph(self.groupBox,self.vlp_thread.entityvlp, 400)  # 绘制matlab图像
+        self.plot_graph(self.vlp_thread.entityvlp)  # 绘制matlab图像
 
 
 
@@ -496,7 +516,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         print("选取文件")
         self.img_filepath, filetype = QFileDialog.getOpenFileName(self,
                                                       "选取文件",
-                                                      "./",
+                                                      r"E:\Code\Py_pro\YOLOV5\yolov5-master\data\images",
                                                       "All Files (*);;Text Files (*.txt)")  # 设置文件扩展名过滤,注意用双分号间隔
         print(self.img_filepath)
         self.set_show_inputimg(self.img_filepath)
@@ -513,7 +533,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         print("选取文件夹")
         self.muti_img_dir = QFileDialog.getExistingDirectory(self,
                                                       "选取文件夹",
-                                                      "./")
+                                                      r"E:\Code\Py_pro\YOLOV5\yolov5-master\data\images")
         print(self.muti_img_dir)
 
     def multi_detected(self):
@@ -521,15 +541,15 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         # if self.img_filepath!="":
         self.start_loading()
         script_path = r"E:\Code\Py_pro\YOLOV5\yolov5-master\detect.py"
-        script_args = ['--weights', r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp2\weights\best.pt',
+        script_args = ['--weights', r'E:\Code\Py_pro\YOLOV5\yolov5-master\runs\train\exp4\weights\best.pt',
                        '--source', self.muti_img_dir,
                        '--data', r'E:\Code\Py_pro\YOLOV5\yolov5-master\data\VLP.yaml',
                        '--imgsz', '1632',
-                       '--save-txt', '',
-                       '--save-csv', '',
-                       '--save-conf', '']
+                       '--save-txt',
+                       '--save-csv',
+                       '--save-conf']
 
-        self.vlp_thread_mutil = VLPWorkThread(['python', script_path] + script_args)  # 线程执行延时任务
+        self.vlp_thread_mutil = VLPWorkThread(['python', script_path] + script_args,self.combobox_dic[self.comboBox_3.currentText()])  # 线程执行延时任务
         self.vlp_thread_mutil.start()
         self.vlp_thread_mutil.signals.connect(self.resolve_mutiimg_vlpsignals)  # 信号连接槽函数
         # else: # 弹窗警告 请选择待检测的文件
@@ -538,9 +558,185 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
     def resolve_mutiimg_vlpsignals(self,signals):
         print(signals)
         self.stop_loading()
+        self.plot_mutil_graph(self.vlp_thread_mutil.entityvlp)  # 绘制matlab图像
 
-        plot_mutil_graph(self.groupBox_4, self.vlp_thread_mutil.entityvlp, 400)  # 绘制matlab图像
+    def init_singlefigure(self,min_width=400):
+        self.SingLineFigure = Figure_Canvas()
+        self.SingSurfFigure = Figure_Canvas()
+        self.sgl_ax3d = self.SingSurfFigure.fig.add_subplot(projection='3d')
+        self.sgl_ax = self.SingLineFigure.fig.add_subplot(111)
 
+        FigureLayout = QtWidgets.QGridLayout(self.groupBox)
+        FigureLayout.addWidget(self.SingSurfFigure, 0, 0, 1, 1)
+        FigureLayout.addWidget(self.SingLineFigure, 1, 0, 1, 1)
+        FigureLayout.setColumnMinimumWidth(0, min_width)
+        FigureLayout.setRowMinimumHeight(0, min_width)
+        FigureLayout.setRowMinimumHeight(1, min_width)
+
+
+    def plot_graph(self,vlpentity):
+        
+        # 3D 图像 绘制led灯和standard_pos和cal_pos
+        self.sgl_ax3d.cla()
+        x = [row[0] for row in envdata.LED_3D]
+        y = [row[1] for row in envdata.LED_3D]
+        z = [row[2] for row in envdata.LED_3D]
+        self.sgl_ax3d.scatter(x, y, z, label='LED', c='k')  # LED
+        standard3d = []
+        pnp3d = []
+        for pos_number in list(vlpentity.pnpres.keys()):
+            standard3d.append(envdata.Standard_Camera[pos_number])
+            for posarray in vlpentity.pnpres[pos_number]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
+                pnp3d.append(posarray.tolist()[0])
+        x_pnp = [row[0] for row in pnp3d]
+        y_pnp = [row[1] for row in pnp3d]
+        z_pnp = [row[2] for row in pnp3d]
+        self.sgl_ax3d.scatter(x_pnp, y_pnp, z_pnp, label='PnP calculate', c='r', marker='x', alpha=0.4)  # pnp计算得到的点
+        x_standard = [row[0] for row in standard3d]
+        y_standard = [row[1] for row in standard3d]
+        z_standard = [row[2] for row in standard3d]
+        self.sgl_ax3d.scatter(x_standard, y_standard, z_standard, label='Standard', c='b', marker='*')  # 标准点
+        self.sgl_ax3d.set_xlim(0, 4.2)
+        self.sgl_ax3d.set_ylim(0, 2.7)
+        self.sgl_ax3d.set_zlim(0, 2.7)
+        self.sgl_ax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        # self.sgl_ax3d.title('3D')
+        self.SingSurfFigure.draw()
+
+        # 2D 点图
+        self.sgl_ax.cla()
+        standard2d = []
+        pnp2d = []
+        for pos_number in list(vlpentity.pnpres.keys()):
+            standard2d.append(envdata.Standard_Camera[pos_number])
+            for posarray in vlpentity.pnpres[pos_number]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
+                pnp2d.append(posarray.tolist()[0])
+
+        x_pnp2 = [row[0] for row in pnp2d]
+        y_pnp2 = [row[1] for row in pnp2d]
+        self.sgl_ax.scatter(x_pnp2, y_pnp2, label='PnP calculate', c='r', marker='x')  # pnp计算得到的点
+        x_standard2 = [row[0] for row in standard2d]
+        y_standard2 = [row[1] for row in standard2d]
+        self.sgl_ax.scatter(x_standard2, y_standard2, label='Standard', c='b', marker='*')  # 标准点
+
+        self.sgl_ax.set_xlim(0, 4.2)
+        self.sgl_ax.set_ylim(0, 2.7)
+        self.sgl_ax.legend(loc='right', bbox_to_anchor=(1.04, 1))
+        # ax.title('2D')
+        self.SingLineFigure.draw()
+
+
+    def init_multifigure(self,min_width=400):
+
+        self.MutiSurfFigure = Figure_Canvas()
+        self.MutiLineFigure = Figure_Canvas()
+        self.MutiCDFFigure = Figure_Canvas()
+        self.MutiHistogramFigure = Figure_Canvas()
+        
+        self.multi_ax3d = self.MutiSurfFigure.fig.add_subplot(projection='3d')
+        self.multi_ax = self.MutiLineFigure.fig.add_subplot(111)
+        self.ax_cdf = self.MutiCDFFigure.fig.add_subplot(111)
+        self.ax_his = self.MutiHistogramFigure.fig.add_subplot(111)
+
+        FigureLayout = QtWidgets.QGridLayout(self.groupBox_4)
+        FigureLayout.addWidget(self.MutiSurfFigure, 0, 0, 1, 1)
+        FigureLayout.addWidget(self.MutiLineFigure, 1, 0, 1, 1)
+        FigureLayout.addWidget(self.MutiCDFFigure, 2, 0, 1, 1)
+        FigureLayout.addWidget(self.MutiHistogramFigure, 3, 0, 1, 1)
+
+        FigureLayout.setColumnMinimumWidth(0, min_width)
+        FigureLayout.setRowMinimumHeight(0, min_width)
+        FigureLayout.setRowMinimumHeight(1, min_width)
+        FigureLayout.setRowMinimumHeight(2, min_width)
+        FigureLayout.setRowMinimumHeight(3, min_width)
+
+    def plot_mutil_graph(self,vlpentity):
+        """
+        绘制matlab图像
+        :param parents:图像绘制的组件
+        :param min_width: 图像的最小尺寸
+        :return:
+        """
+        # 3D 图像 绘制led灯和standard_pos和cal_pos
+        self.multi_ax3d.cla()
+        x_cdf = [row[0] for row in envdata.LED_3D]
+        y = [row[1] for row in envdata.LED_3D]
+        z = [row[2] for row in envdata.LED_3D]
+        self.multi_ax3d.scatter(x_cdf, y, z, label='LED', c='k')  # LED
+        standard3d = []
+        index_pnp = 0  # 只为第一次设置label
+        for pos_number in list(vlpentity.pnpres.keys()):
+            standard3d.append(envdata.Standard_Camera[pos_number])
+            for posarray in vlpentity.pnpres[pos_number]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
+                if index_pnp == 0:
+                    self.multi_ax3d.scatter(posarray[:, 0], posarray[:, 1], posarray[:, 2],
+                                      label='PnP calculate', c=envdata.colors[pos_number], marker='x',
+                                      alpha=0.4)  # pnp计算得到的点
+                else:
+                    self.multi_ax3d.scatter(posarray[:, 0], posarray[:, 1], posarray[:, 2],
+                                      label=None, c=envdata.colors[pos_number], marker='x', alpha=0.4)
+                index_pnp = index_pnp + 1
+        x_standard = [row[0] for row in standard3d]
+        y_standard = [row[1] for row in standard3d]
+        z_standard = [row[2] for row in standard3d]
+        self.multi_ax3d.scatter(x_standard, y_standard, z_standard, label='Standard', c='b', marker='*', zorder=10000)  # 标准点
+
+        self.multi_ax3d.set_xlim(0, 4.2)
+        self.multi_ax3d.set_ylim(0, 2.7)
+        self.multi_ax3d.set_zlim(0, 2.7)
+        self.multi_ax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        # ax3d.title('3D')
+        self.MutiSurfFigure.draw()
+
+        # 2D 点图
+        self.multi_ax.cla()
+        standard2d = []
+        index_pnp = 0  # 只为第一次设置label
+        for pos_number in list(vlpentity.pnpres.keys()):
+            standard2d.append(envdata.Standard_Camera[pos_number])
+            for posarray in vlpentity.pnpres[pos_number]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
+                if index_pnp == 0:
+                    self.multi_ax.scatter(posarray[:, 0], posarray[:, 1],
+                                    label='PnP calculate', c=envdata.colors[pos_number], marker='x',
+                                    alpha=0.4)  # pnp计算得到的点
+                else:
+                    self.multi_ax.scatter(posarray[:, 0], posarray[:, 1],
+                                    label=None, c=envdata.colors[pos_number], marker='x', alpha=0.4)
+                index_pnp = index_pnp + 1
+        x_standard2 = [row[0] for row in standard2d]
+        y_standard2 = [row[1] for row in standard2d]
+        self.multi_ax.scatter(x_standard2, y_standard2, label='Standard', c='b', marker='*')  # 标准点
+
+        self.multi_ax.set_xlim(0, 4.2)
+        self.multi_ax.set_ylim(0, 2.7)
+        self.multi_ax.legend(loc='right', bbox_to_anchor=(1.04, 1))
+        # ax.title('2D')
+        self.MutiLineFigure.draw()
+
+        # 绘制CDF图和频率分布图
+        errors = []
+        for pos_number in list(vlpentity.pnpres.keys()):
+            standard_camera = np.array(envdata.Standard_Camera[pos_number]).reshape(1, 3)
+            for cla_camera in vlpentity.pnpres[pos_number]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
+                error=float(cal_err(cla_camera, standard_camera))
+                # 针对一些大误差进行舍弃
+                if error>3:
+                    continue
+                errors.append(error)
+        self.ax_cdf.cla()
+        res = stats.relfreq(errors, numbins=25)  # 给定数据集的相对频率分布
+        x_cdf = res.lowerlimit + np.linspace(0, res.binsize * res.frequency.size, res.frequency.size)
+        y_cdf = np.cumsum(res.frequency)
+        self.ax_cdf.plot(x_cdf, y_cdf, label='CDF')
+
+        self.ax_cdf.legend()
+        self.MutiCDFFigure.draw()
+
+        self.ax_his.cla()
+        self.ax_his.bar(x_cdf, res.frequency, width=res.binsize, label='Histogram')
+
+        self.ax_his.legend()
+        self.MutiHistogramFigure.draw()
 
 
 if __name__ == '__main__':
