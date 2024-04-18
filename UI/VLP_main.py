@@ -376,7 +376,12 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         for i in range(len(standard_pnp)):
             standard_camera = np.array(self.sim_camerapos[i])
             for pnp_pos in standard_pnp[i]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
-                errors.append(float(cal_err(np.array(pnp_pos), standard_camera)))
+                error = float(cal_err(np.array(pnp_pos), standard_camera))
+                # 针对一些大误差进行舍弃
+                if error > 3:
+                    continue
+                errors.append(error)
+                # errors.append(float(cal_err(np.array(pnp_pos), standard_camera)))
 
         res = stats.relfreq(errors, numbins=25)  # 给定数据集的相对频率分布
         x_cdf = res.lowerlimit + np.linspace(0, res.binsize * res.frequency.size, res.frequency.size)
@@ -484,6 +489,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
     def resolve_oneimg_vlpsignals(self, signals):
         # VLP程序执行结束之后的响应
         print(signals)
+        # 考虑LED-ID不满足PnP算法条件，没有获得Rt矩阵的情况
+
         self.stop_loading()
         tiff_path = self.vlp_thread.detect_newestdir + '\\' + self.vlp_thread.entityvlp.detectedres_filename[0] + '.tiff'
         self.set_show_inputimg(tiff_path)

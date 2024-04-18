@@ -52,13 +52,14 @@ def cal_RT(res,pnp_flags=cv.SOLVEPNP_SQPNP):
     times=[]
     for item in res:
         filename = list(item.keys())[0]
-        word_points=item[filename][0]
-        img_points=item[filename][1]
+        word_points,img_points=del_rep(item[filename][0], item[filename][1])
+        # word_points=np.unique(item[filename][0], axis=0)
+        # img_points=np.unique(item[filename][1],axis=0)
         start_time = time.time()
-        if pnp_flags==8 and len(img_points)>=3:
+        if pnp_flags==8 and len(word_points)>=3:
             (success, rotation_vector, translation_vector) = cv.solvePnP(word_points, img_points, camera_matrix,
                                                                          dist_coeffs, flags=pnp_flags)
-        elif pnp_flags==0 and len(img_points)>3:
+        elif pnp_flags==0 and len(word_points)>3:
             (success, rotation_vector, translation_vector) = cv.solvePnP(word_points, img_points, camera_matrix,
                                                                         dist_coeffs, flags=pnp_flags)
         else:
@@ -68,6 +69,23 @@ def cal_RT(res,pnp_flags=cv.SOLVEPNP_SQPNP):
         R = cv.Rodrigues(rotation_vector)[0] #将旋转向量转化为旋转矩阵
         RTs.append({filename:[R,translation_vector]})
     return RTs,times
+
+def del_rep(word_points,img_points):
+    """
+    删除wordpoints中的重复值，并对应删除imgpoints中的对应index的值。wordpoints
+    :param word_points: array(n,3)
+    :param img_points: array(n,2)
+    :return:
+    """
+    norp_wordpoints=[]
+    norp_imgpoints=[]
+    for index in range(len(word_points)):
+        word_row=word_points[index]
+        img_row=img_points[index]
+        if not any(np.array_equal(word_row, unique_row) for unique_row in norp_wordpoints):
+            norp_wordpoints.append(word_row)
+            norp_imgpoints.append(img_row)
+    return np.array(norp_wordpoints),np.array(norp_imgpoints)
 
 # 不确定是否正确
 def cal_camerapos(RT):
