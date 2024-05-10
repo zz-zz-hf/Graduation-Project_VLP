@@ -237,15 +237,18 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
 
     def init_led_camera(self,min_width):
         self.LCFigure = Figure_Canvas()
-        self.ax3d = self.LCFigure.fig.add_subplot(projection='3d')
+
         FigureLayout = QtWidgets.QGridLayout(self.groupBox_5)
         FigureLayout.addWidget(self.LCFigure, 0, 0, 1, 1)
         FigureLayout.setColumnMinimumWidth(0, min_width)
         FigureLayout.setRowMinimumHeight(0, min_width)
+        self.ax3d = self.LCFigure.fig.add_subplot(projection='3d')
+
     def draw_led_camera(self,camera_poss):
         # 3D 图像 绘制led灯和standard_pos和cal_pos
         # ax3d = LCFigure.fig.add_subplot(projection='3d')
         self.ax3d.cla()
+        self.ax3d.set_title('仿真环境模拟', font={'family': 'MicroSoft YaHei'})
         x = [row[0] for row in envdata.LED_3D]
         y = [row[1] for row in envdata.LED_3D]
         z = [row[2] for row in envdata.LED_3D]
@@ -259,7 +262,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.ax3d.set_xlim(0, 4.2)
         self.ax3d.set_ylim(0, 2.7)
         self.ax3d.set_zlim(0, 2.7)
-        self.ax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        self.ax3d.legend( bbox_to_anchor=(1.3, 1.1))  # 添加图例
         self.LCFigure.draw()
 
     def start_simlation(self):
@@ -318,12 +321,17 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         FigureLayout.setRowMinimumHeight(3, min_width)
 
         self.simax3d = self.SimFigure3d.fig.add_subplot(projection='3d')
+        self.simax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
         self.simax2d = self.SimFigure2d.fig.add_subplot(111)
+        self.simax2d.set_title('2D定位估计', font={'family': 'MicroSoft YaHei'})
         self.simaxcdf = self.SimFigurecdf.fig.add_subplot(111)
+        self.simaxcdf.set_title('误差累计分布(CDF)图', font={'family': 'MicroSoft YaHei'})
         self.simaxfre = self.SimFigurefre.fig.add_subplot(111)
+        self.simaxfre.set_title('误差直方图', font={'family': 'MicroSoft YaHei'})
 
     def draw_simlation(self,standard_pnp):
         self.simax3d.cla()
+        self.simax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
         x = [row[0] for row in envdata.LED_3D]
         y = [row[1] for row in envdata.LED_3D]
         z = [row[2] for row in envdata.LED_3D]
@@ -346,11 +354,13 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.simax3d.set_xlim(0, 4.2)
         self.simax3d.set_ylim(0, 2.7)
         self.simax3d.set_zlim(0, 2.7)
-        self.simax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        self.simax3d.legend(bbox_to_anchor=(1.0, 1.1))  # 添加图例
         self.SimFigure3d.draw()
 
         # 绘制2d图像
         self.simax2d.cla()
+        self.simax2d.set_title('2D定位估计', font={'family':'MicroSoft YaHei'})
+
         index_pnp = 0
         for index in range(len(standard_pnp)):  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
             pnplists = np.array(standard_pnp[index])
@@ -367,18 +377,21 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.simax2d.scatter(x_standard, y_standard, label='Standard', c='r', marker='*')  # camera_standard
         self.simax2d.set_xlim(0, 4.2)
         self.simax2d.set_ylim(0, 2.7)
-        self.simax2d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        self.simax2d.legend(loc='best')  # 添加图例
         self.SimFigure2d.draw()
 
         # 绘制CDF图和频率分布
         self.simaxcdf.cla()
+        self.simaxcdf.set_title('误差累计分布(CDF)图', font={'family': 'MicroSoft YaHei'})
+
         errors = []
         for i in range(len(standard_pnp)):
             standard_camera = np.array(self.sim_camerapos[i])
             for pnp_pos in standard_pnp[i]:  # [array([[ 2.84641251,  0.96031783, -0.01636136]]),……]
                 error = float(cal_err(np.array(pnp_pos), standard_camera))
                 # 针对一些大误差进行舍弃
-                if error > 3:
+                if error > 2.5:
+                    #
                     continue
                 errors.append(error)
                 # errors.append(float(cal_err(np.array(pnp_pos), standard_camera)))
@@ -391,6 +404,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.SimFigurecdf.draw()
 
         self.simaxfre.cla()
+        self.simaxfre.set_title('误差直方图', font={'family': 'MicroSoft YaHei'})
+
         self.simaxfre.bar(x_cdf, res.frequency, width=res.binsize, label='Histogram')
         self.simaxfre.legend()
         self.SimFigurefre.draw()
@@ -571,7 +586,9 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.SingLineFigure = Figure_Canvas()
         self.SingSurfFigure = Figure_Canvas()
         self.sgl_ax3d = self.SingSurfFigure.fig.add_subplot(projection='3d')
+        self.sgl_ax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
         self.sgl_ax = self.SingLineFigure.fig.add_subplot(111)
+        self.sgl_ax.set_title('2D定位估计', font={'family': 'MicroSoft YaHei'})
 
         FigureLayout = QtWidgets.QGridLayout(self.groupBox)
         FigureLayout.addWidget(self.SingSurfFigure, 0, 0, 1, 1)
@@ -585,6 +602,7 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         
         # 3D 图像 绘制led灯和standard_pos和cal_pos
         self.sgl_ax3d.cla()
+        self.sgl_ax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
         x = [row[0] for row in envdata.LED_3D]
         y = [row[1] for row in envdata.LED_3D]
         z = [row[2] for row in envdata.LED_3D]
@@ -606,12 +624,13 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.sgl_ax3d.set_xlim(0, 4.2)
         self.sgl_ax3d.set_ylim(0, 2.7)
         self.sgl_ax3d.set_zlim(0, 2.7)
-        self.sgl_ax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        self.sgl_ax3d.legend(bbox_to_anchor=(1.0, 1.1))  # 添加图例
         # self.sgl_ax3d.title('3D')
         self.SingSurfFigure.draw()
 
         # 2D 点图
         self.sgl_ax.cla()
+        self.sgl_ax.set_title('2D定位估计', font={'family': 'MicroSoft YaHei'})
         standard2d = []
         pnp2d = []
         for pos_number in list(vlpentity.pnpres.keys()):
@@ -641,9 +660,13 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.MutiHistogramFigure = Figure_Canvas()
         
         self.multi_ax3d = self.MutiSurfFigure.fig.add_subplot(projection='3d')
+        self.multi_ax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
         self.multi_ax = self.MutiLineFigure.fig.add_subplot(111)
+        self.multi_ax.set_title('2D定位估计', font={'family': 'MicroSoft YaHei'})
         self.ax_cdf = self.MutiCDFFigure.fig.add_subplot(111)
+        self.ax_cdf.set_title('误差累计分布(CDF)图', font={'family': 'MicroSoft YaHei'})
         self.ax_his = self.MutiHistogramFigure.fig.add_subplot(111)
+        self.ax_his.set_title('误差直方图', font={'family': 'MicroSoft YaHei'})
 
         FigureLayout = QtWidgets.QGridLayout(self.groupBox_4)
         FigureLayout.addWidget(self.MutiSurfFigure, 0, 0, 1, 1)
@@ -666,6 +689,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         """
         # 3D 图像 绘制led灯和standard_pos和cal_pos
         self.multi_ax3d.cla()
+        self.multi_ax3d.set_title('3D定位估计', font={'family': 'MicroSoft YaHei'})
+
         x_cdf = [row[0] for row in envdata.LED_3D]
         y = [row[1] for row in envdata.LED_3D]
         z = [row[2] for row in envdata.LED_3D]
@@ -691,12 +716,14 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.multi_ax3d.set_xlim(0, 4.2)
         self.multi_ax3d.set_ylim(0, 2.7)
         self.multi_ax3d.set_zlim(0, 2.7)
-        self.multi_ax3d.legend(loc='right', bbox_to_anchor=(1.04, 1))  # 添加图例
+        self.multi_ax3d.legend(bbox_to_anchor=(1.0, 1.1))  # 添加图例
         # ax3d.title('3D')
         self.MutiSurfFigure.draw()
 
         # 2D 点图
         self.multi_ax.cla()
+        self.multi_ax.set_title('2D定位估计', font={'family': 'MicroSoft YaHei'})
+
         standard2d = []
         index_pnp = 0  # 只为第一次设置label
         for pos_number in list(vlpentity.pnpres.keys()):
@@ -731,6 +758,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
                     continue
                 errors.append(error)
         self.ax_cdf.cla()
+        self.ax_cdf.set_title('误差累计分布(CDF)图', font={'family': 'MicroSoft YaHei'})
+
         res = stats.relfreq(errors, numbins=25)  # 给定数据集的相对频率分布
         x_cdf = res.lowerlimit + np.linspace(0, res.binsize * res.frequency.size, res.frequency.size)
         y_cdf = np.cumsum(res.frequency)
@@ -740,6 +769,8 @@ class Main_Window(QtWidgets.QMainWindow,Ui_MainWindow):
         self.MutiCDFFigure.draw()
 
         self.ax_his.cla()
+        self.ax_his.set_title('误差直方图', font={'family': 'MicroSoft YaHei'})
+
         self.ax_his.bar(x_cdf, res.frequency, width=res.binsize, label='Histogram')
 
         self.ax_his.legend()
